@@ -1,13 +1,71 @@
 [project]
-name = "backend"
-version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
+name = "rag-chatbot"
+version = "1.0.0"
+description = "AI-native RAG chatbot for Physical AI textbook with grounded retrieval and zero hallucinations"
+authors = [{name = "RAG Team", email = "team@example.com"}]
 requires-python = ">=3.11"
 dependencies = [
-    "fastapi>=0.124.2",
-    "openai-agents>=0.6.2",
-    "python-dotenv>=1.2.1",
-    "qdrant-client>=1.16.1",
-    "uvicorn>=0.38.0",
+    # Core web framework
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.23.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.0.0",
+
+    # AI/ML dependencies
+    "cohere==5.0.0",
+    "qdrant-client>=1.7.0",
+    "psycopg[binary,pool]>=3.1.0",
+
+    # Utilities
+    "httpx>=0.25.0",
+    "python-multipart>=0.0.6",
 ]
+
+[project.optional-dependencies]
+dev = [
+    # Testing
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-mock>=3.11.0",
+    "pytest-cov>=4.1.0",
+
+    # Code quality
+    "ruff>=0.1.0",
+    "mypy>=1.5.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=app --cov-report=term-missing"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = ["E", "F", "I", "N", "W", "UP"]
+ignore = ["E501"]  # Line too long (handled by black)
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+plugins = ["pydantic.mypy"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.isort]
+profile = "black"
+line_length = 100

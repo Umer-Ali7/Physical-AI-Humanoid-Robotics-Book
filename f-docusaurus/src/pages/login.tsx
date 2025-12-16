@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '@theme/Layout';
+import BrowserOnly from '@docusaurus/BrowserOnly';
+import { useColorMode } from '@docusaurus/theme-common';
 import { signUpWithTechnicalBackground, signIn, signOut, getSession, User } from '../lib/auth-client';
 
-export default function Login() {
+// Client-side only component that uses useColorMode
+function LoginContent() {
+  const { colorMode } = useColorMode();
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
   const [formData, setFormData] = useState({
     name: '',
@@ -15,6 +19,9 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
+
+  // Get theme-aware styles
+  const styles = getStyles(colorMode);
 
   // Check session on mount
   useEffect(() => {
@@ -101,25 +108,22 @@ export default function Login() {
 
   if (sessionLoading) {
     return (
-      <Layout title="Login" description="Sign in to your account">
-        <div style={styles.container}>
-          <div style={styles.card}>
-            <div style={styles.header}>
-              <h1 style={styles.title}>
-                <span style={styles.titleGlow}>Loading...</span>
-              </h1>
-            </div>
+      <div style={styles.container}>
+        <div style={styles.card}>
+          <div style={styles.header}>
+            <h1 style={styles.title}>
+              <span style={styles.titleGlow}>Loading...</span>
+            </h1>
           </div>
         </div>
-      </Layout>
+      </div>
     );
   }
 
   // If logged in, show user profile card
   if (user) {
     return (
-      <Layout title="Profile" description="Your profile">
-        <div style={styles.container}>
+      <div style={styles.container}>
           <div style={styles.card}>
             {/* Header */}
             <div style={styles.header}>
@@ -171,14 +175,12 @@ export default function Login() {
             </div>
           </div>
         </div>
-      </Layout>
     );
   }
 
   // If logged out, show login/signup form
   return (
-    <Layout title="Login" description="Sign in to your account">
-      <div style={styles.container}>
+    <div style={styles.container}>
         <div style={styles.card}>
           {/* Header */}
           <div style={styles.header}>
@@ -311,28 +313,45 @@ export default function Login() {
           </div>
         </div>
       </div>
+  );
+}
+
+// Main page component with BrowserOnly wrapper
+export default function Login() {
+  return (
+    <Layout title="Login" description="Sign in to your account">
+      <BrowserOnly fallback={<div>Loading...</div>}>
+        {() => <LoginContent />}
+      </BrowserOnly>
     </Layout>
   );
 }
 
-// Cyber-Physical Dark Mode Styles
-const styles: { [key: string]: React.CSSProperties } = {
+// Theme-aware styles function
+function getStyles(colorMode: 'light' | 'dark'): { [key: string]: React.CSSProperties } {
+  const isDark = colorMode === 'dark';
+
+  return {
   container: {
     minHeight: '100vh',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%)',
+    background: isDark
+      ? 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%)'
+      : 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #dbeafe 100%)',
     padding: '20px'
   },
   card: {
     width: '100%',
     maxWidth: '450px',
-    background: 'rgba(15, 15, 25, 0.95)',
-    border: '2px solid #00ffff',
+    background: isDark ? 'rgba(15, 15, 25, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+    border: isDark ? '2px solid #00ffff' : '2px solid #0ea5e9',
     borderRadius: '16px',
     padding: '40px',
-    boxShadow: '0 0 40px rgba(0, 255, 255, 0.3), inset 0 0 20px rgba(0, 255, 255, 0.1)',
+    boxShadow: isDark
+      ? '0 0 40px rgba(0, 255, 255, 0.3), inset 0 0 20px rgba(0, 255, 255, 0.1)'
+      : '0 0 40px rgba(14, 165, 233, 0.3), inset 0 0 20px rgba(14, 165, 233, 0.05)',
     backdropFilter: 'blur(10px)'
   },
   header: {
@@ -343,16 +362,18 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: '32px',
     fontWeight: '700',
     margin: '0 0 12px 0',
-    color: '#00ffff',
+    color: isDark ? '#00ffff' : '#0284c7',
     textTransform: 'uppercase',
     letterSpacing: '2px'
   },
   titleGlow: {
-    textShadow: '0 0 20px rgba(0, 255, 255, 0.8), 0 0 40px rgba(0, 255, 255, 0.5)'
+    textShadow: isDark
+      ? '0 0 20px rgba(0, 255, 255, 0.8), 0 0 40px rgba(0, 255, 255, 0.5)'
+      : '0 0 20px rgba(2, 132, 199, 0.6), 0 0 40px rgba(2, 132, 199, 0.3)'
   },
   subtitle: {
     fontSize: '14px',
-    color: '#8892b0',
+    color: isDark ? '#8892b0' : '#64748b',
     margin: '0',
     fontFamily: 'monospace'
   },
@@ -364,31 +385,33 @@ const styles: { [key: string]: React.CSSProperties } = {
   welcomeSection: {
     textAlign: 'center',
     padding: '20px',
-    background: 'rgba(0, 255, 255, 0.05)',
+    background: isDark ? 'rgba(0, 255, 255, 0.05)' : 'rgba(14, 165, 233, 0.1)',
     borderRadius: '12px',
-    border: '1px solid #00ffff33'
+    border: isDark ? '1px solid #00ffff33' : '1px solid #0ea5e966'
   },
   welcomeText: {
     fontSize: '18px',
-    color: '#8892b0',
+    color: isDark ? '#8892b0' : '#64748b',
     margin: '0 0 8px 0',
     fontFamily: 'monospace'
   },
   userName: {
     fontSize: '28px',
-    color: '#00ffff',
+    color: isDark ? '#00ffff' : '#0284c7',
     margin: '0',
     fontWeight: '700',
-    textShadow: '0 0 15px rgba(0, 255, 255, 0.6)'
+    textShadow: isDark
+      ? '0 0 15px rgba(0, 255, 255, 0.6)'
+      : '0 0 15px rgba(2, 132, 199, 0.4)'
   },
   profileDetails: {
     display: 'flex',
     flexDirection: 'column',
     gap: '16px',
     padding: '20px',
-    background: 'rgba(10, 10, 20, 0.6)',
+    background: isDark ? 'rgba(10, 10, 20, 0.6)' : 'rgba(248, 250, 252, 0.8)',
     borderRadius: '12px',
-    border: '1px solid #00ffff22'
+    border: isDark ? '1px solid #00ffff22' : '1px solid #cbd5e1'
   },
   detailRow: {
     display: 'flex',
@@ -398,14 +421,14 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   detailLabel: {
     fontSize: '14px',
-    color: '#00ffff',
+    color: isDark ? '#00ffff' : '#0284c7',
     fontWeight: '600',
     fontFamily: 'monospace',
     textTransform: 'uppercase'
   },
   detailValue: {
     fontSize: '14px',
-    color: '#ffffff',
+    color: isDark ? '#ffffff' : '#1e293b',
     fontFamily: 'monospace'
   },
   logoutButton: {
@@ -425,10 +448,12 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   continueButton: {
     padding: '16px',
-    background: 'linear-gradient(135deg, #00ffff 0%, #00cccc 100%)',
-    border: '2px solid #00ffff',
+    background: isDark
+      ? 'linear-gradient(135deg, #00ffff 0%, #00cccc 100%)'
+      : 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+    border: isDark ? '2px solid #00ffff' : '2px solid #0ea5e9',
     borderRadius: '8px',
-    color: '#0a0a0a',
+    color: isDark ? '#0a0a0a' : '#ffffff',
     fontSize: '16px',
     fontWeight: '700',
     cursor: 'pointer',
@@ -436,20 +461,22 @@ const styles: { [key: string]: React.CSSProperties } = {
     textTransform: 'uppercase',
     letterSpacing: '1px',
     fontFamily: 'monospace',
-    boxShadow: '0 0 20px rgba(0, 255, 255, 0.4)'
+    boxShadow: isDark
+      ? '0 0 20px rgba(0, 255, 255, 0.4)'
+      : '0 0 20px rgba(14, 165, 233, 0.4)'
   },
   tabContainer: {
     display: 'flex',
     gap: '8px',
     marginBottom: '32px',
-    borderBottom: '2px solid #00ffff33'
+    borderBottom: isDark ? '2px solid #00ffff33' : '2px solid #0ea5e966'
   },
   tab: {
     flex: 1,
     padding: '12px',
     background: 'transparent',
     border: 'none',
-    color: '#8892b0',
+    color: isDark ? '#8892b0' : '#64748b',
     fontSize: '16px',
     fontWeight: '600',
     cursor: 'pointer',
@@ -458,9 +485,11 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontFamily: 'monospace'
   },
   tabActive: {
-    color: '#00ffff',
-    textShadow: '0 0 10px rgba(0, 255, 255, 0.6)',
-    borderBottom: '2px solid #00ffff'
+    color: isDark ? '#00ffff' : '#0284c7',
+    textShadow: isDark
+      ? '0 0 10px rgba(0, 255, 255, 0.6)'
+      : '0 0 10px rgba(2, 132, 199, 0.4)',
+    borderBottom: isDark ? '2px solid #00ffff' : '2px solid #0284c7'
   },
   form: {
     display: 'flex',
@@ -473,7 +502,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: '8px'
   },
   label: {
-    color: '#00ffff',
+    color: isDark ? '#00ffff' : '#0284c7',
     fontSize: '14px',
     fontWeight: '600',
     textTransform: 'uppercase',
@@ -487,10 +516,10 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   input: {
     padding: '14px 16px',
-    background: 'rgba(10, 10, 20, 0.8)',
-    border: '2px solid #00ffff55',
+    background: isDark ? 'rgba(10, 10, 20, 0.8)' : 'rgba(248, 250, 252, 0.9)',
+    border: isDark ? '2px solid #00ffff55' : '2px solid #0ea5e999',
     borderRadius: '8px',
-    color: '#ffffff',
+    color: isDark ? '#ffffff' : '#1e293b',
     fontSize: '16px',
     outline: 'none',
     transition: 'all 0.3s ease',
@@ -511,10 +540,10 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   select: {
     padding: '14px 16px',
-    background: 'rgba(10, 10, 20, 0.8)',
-    border: '2px solid #00ffff55',
+    background: isDark ? 'rgba(10, 10, 20, 0.8)' : 'rgba(248, 250, 252, 0.9)',
+    border: isDark ? '2px solid #00ffff55' : '2px solid #0ea5e999',
     borderRadius: '8px',
-    color: '#ffffff',
+    color: isDark ? '#ffffff' : '#1e293b',
     fontSize: '16px',
     outline: 'none',
     cursor: 'pointer',
@@ -523,10 +552,10 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   error: {
     padding: '12px 16px',
-    background: 'rgba(255, 50, 50, 0.1)',
-    border: '2px solid #ff3232',
+    background: isDark ? 'rgba(255, 50, 50, 0.1)' : 'rgba(239, 68, 68, 0.15)',
+    border: isDark ? '2px solid #ff3232' : '2px solid #ef4444',
     borderRadius: '8px',
-    color: '#ff6b6b',
+    color: isDark ? '#ff6b6b' : '#dc2626',
     fontSize: '14px',
     display: 'flex',
     alignItems: 'center',
@@ -538,10 +567,12 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   submitButton: {
     padding: '16px',
-    background: 'linear-gradient(135deg, #00ffff 0%, #00cccc 100%)',
-    border: '2px solid #00ffff',
+    background: isDark
+      ? 'linear-gradient(135deg, #00ffff 0%, #00cccc 100%)'
+      : 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)',
+    border: isDark ? '2px solid #00ffff' : '2px solid #0ea5e9',
     borderRadius: '8px',
-    color: '#0a0a0a',
+    color: isDark ? '#0a0a0a' : '#ffffff',
     fontSize: '16px',
     fontWeight: '700',
     cursor: 'pointer',
@@ -549,7 +580,9 @@ const styles: { [key: string]: React.CSSProperties } = {
     textTransform: 'uppercase',
     letterSpacing: '1px',
     fontFamily: 'monospace',
-    boxShadow: '0 0 20px rgba(0, 255, 255, 0.4)'
+    boxShadow: isDark
+      ? '0 0 20px rgba(0, 255, 255, 0.4)'
+      : '0 0 20px rgba(14, 165, 233, 0.4)'
   },
   footer: {
     marginTop: '32px',
@@ -557,12 +590,15 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   footerLine: {
     height: '1px',
-    background: 'linear-gradient(90deg, transparent, #00ffff, transparent)',
+    background: isDark
+      ? 'linear-gradient(90deg, transparent, #00ffff, transparent)'
+      : 'linear-gradient(90deg, transparent, #0284c7, transparent)',
     marginBottom: '16px'
   },
   footerText: {
-    color: '#8892b0',
+    color: isDark ? '#8892b0' : '#64748b',
     fontSize: '12px',
     fontFamily: 'monospace'
   }
-};
+  };
+}

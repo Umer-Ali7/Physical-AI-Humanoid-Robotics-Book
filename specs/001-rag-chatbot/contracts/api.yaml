@@ -1,0 +1,357 @@
+openapi: 3.0.3
+info:
+  title: RAG Documentation Chatbot API
+  version: 1.0.0
+  description: |
+    FastAPI backend for the Physical AI documentation chatbot.
+    Provides endpoints for chat queries and documentation ingestion.
+  contact:
+    name: Physical AI Team
+
+servers:
+  - url: http://localhost:8000
+    description: Development server
+  - url: https://docs.example.com/api
+    description: Production server (via nginx reverse proxy)
+
+tags:
+  - name: chat
+    description: Chat query and response endpoints
+  - name: ingestion
+    description: Documentation ingestion endpoints (admin-only)
+
+paths:
+  /chat:
+    post:
+      summary: Send a chat query and receive AI-generated response
+      description: |
+        Accepts a user query, performs semantic search on documentation,
+        and generates a grounded response using retrieved context.
+
+        **P1 Feature**: Core Q&A functionality
+        **P2 Enhancement**: Returns source citations
+      operationId: chat_query
+      tags:
+        - chat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+            examples:
+              basic_query:
+                summary: Basic question
+                value:
+                  message: "What is a ROS 2 node?"
+              followup_query:
+                summary: Follow-up with context (P3)
+                value:
+                  message: "How do I create one?"
+                  session_id: "550e8400-e29b-41d4-a716-446655440000"
+                  context_messages:
+                    - role: "user"
+                      content: "What is a ROS 2 node?"
+                    - role: "assistant"
+                      content: "A ROS 2 node is a process..."
+      responses:
+        '200':
+          description: Successful response with AI-generated answer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+              examples:
+                with_citations:
+                  summary: Answer with citations (P2)
+                  value:
+                    reply: "A ROS 2 node is a process that performs computation [Source 1]. Nodes communicate via topics and services [Source 2]."
+                    citations:
+                      - section: "Introduction to ROS 2"
+                        url: "/docs/ros2/intro"
+                        source_number: 1
+                        relevance_score: 0.89
+                      - section: "Node Communication"
+                        url: "/docs/ros2/communication"
+                        source_number: 2
+                        relevance_score: 0.82
+                no_results:
+                  summary: No relevant documentation found
+                  value:
+                    reply: "I couldn't find information about that in the documentation. Please try rephrasing your question or consult the full documentation."
+                    citations: []
+        '400':
+          description: Invalid request (empty query, too long, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Query text is required and must be 1-500 characters"
+        '500':
+          description: Internal server error (embedding/generation failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Failed to generate response. Please try again."
+        '503':
+          description: Service unavailable (vector DB or Gemini API down)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "The chatbot is temporarily unavailable. Please try again in a moment."
+
+  /ingest:
+    post:
+      summary: Ingest documentation files into vector database
+      description: |
+        Scans the documentation directory, processes markdown files,
+        generates embeddings, and stores chunks in Qdrant.
+
+        **P2 Feature**: Maintainer workflow for updating chatbot knowledge
+        **Security**: Should be protected (IP whitelist or API key)
+      operationId: ingest_docs
+      tags:
+        - ingestion
+      security:
+        - apiKey: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IngestRequest'
+            examples:
+              full_ingest:
+                summary: Ingest all files
+                value:
+                  docs_path: "../f-docusaurus/docs"
+                  force_reindex: false
+              force_reindex:
+                summary: Force reindex all files
+                value:
+                  docs_path: "../f-docusaurus/docs"
+                  force_reindex: true
+      responses:
+        '200':
+          description: Ingestion completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngestResponse'
+              example:
+                status: "completed"
+                files_processed: 87
+                chunks_created: 1432
+                duration_seconds: 245.3
+                errors: []
+        '207':
+          description: Partial success (some files failed)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngestResponse'
+              example:
+                status: "partial"
+                files_processed: 85
+                chunks_created: 1398
+                duration_seconds: 240.1
+                errors:
+                  - file: "docs/advanced/broken.md"
+                    error: "Invalid markdown structure"
+        '400':
+          description: Invalid request (docs path doesn't exist)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Documentation path not found: ../f-docusaurus/docs"
+        '401':
+          description: Unauthorized (missing or invalid API key)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Unauthorized: Invalid or missing API key"
+        '500':
+          description: Internal server error (ingestion failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "Ingestion failed: Unable to connect to Qdrant"
+
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-Admin-API-Key
+      description: Admin API key for ingestion endpoint
+
+  schemas:
+    ChatRequest:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: User's query text
+          example: "What is a ROS 2 node?"
+        session_id:
+          type: string
+          format: uuid
+          description: |
+            Optional session ID for conversation context (P3 feature).
+            If provided, enables follow-up questions with context.
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        context_messages:
+          type: array
+          description: |
+            Optional conversation history for context (P3 feature).
+            Array of previous messages in the conversation.
+          items:
+            type: object
+            required:
+              - role
+              - content
+            properties:
+              role:
+                type: string
+                enum: [user, assistant]
+              content:
+                type: string
+          example:
+            - role: "user"
+              content: "What is ROS 2?"
+            - role: "assistant"
+              content: "ROS 2 is a robot operating system..."
+
+    ChatResponse:
+      type: object
+      required:
+        - reply
+      properties:
+        reply:
+          type: string
+          description: AI-generated response grounded in documentation
+          example: "A ROS 2 node is a process that performs computation. Nodes can communicate with each other via topics, services, and actions."
+        citations:
+          type: array
+          description: Source references used to generate the response (P2 feature)
+          items:
+            $ref: '#/components/schemas/Citation'
+
+    Citation:
+      type: object
+      required:
+        - section
+        - url
+        - source_number
+      properties:
+        section:
+          type: string
+          description: Section title from documentation
+          example: "Introduction to ROS 2"
+        url:
+          type: string
+          format: uri-reference
+          description: Docusaurus page URL (relative path)
+          example: "/docs/ros2/intro"
+        source_number:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: Citation number referenced in response
+          example: 1
+        relevance_score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          description: Cosine similarity score from vector search
+          example: 0.89
+
+    IngestRequest:
+      type: object
+      properties:
+        docs_path:
+          type: string
+          description: |
+            Relative or absolute path to documentation directory.
+            Defaults to "../f-docusaurus/docs" if not provided.
+          example: "../f-docusaurus/docs"
+          default: "../f-docusaurus/docs"
+        force_reindex:
+          type: boolean
+          description: |
+            If true, delete existing collection and reindex all files.
+            If false, only process new/modified files.
+          example: false
+          default: false
+
+    IngestResponse:
+      type: object
+      required:
+        - status
+        - files_processed
+        - chunks_created
+        - duration_seconds
+      properties:
+        status:
+          type: string
+          enum: [completed, partial, failed]
+          description: Overall ingestion status
+          example: "completed"
+        files_processed:
+          type: integer
+          description: Number of markdown files successfully processed
+          example: 87
+        chunks_created:
+          type: integer
+          description: Total number of chunks created/updated in Qdrant
+          example: 1432
+        duration_seconds:
+          type: number
+          format: float
+          description: Total time taken for ingestion
+          example: 245.3
+        errors:
+          type: array
+          description: List of files that failed to process
+          items:
+            type: object
+            required:
+              - file
+              - error
+            properties:
+              file:
+                type: string
+                description: Relative path to the failed file
+              error:
+                type: string
+                description: Error message
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+          example: "Query text is required and must be 1-500 characters"
+        details:
+          type: object
+          description: Optional additional error details
+          additionalProperties: true

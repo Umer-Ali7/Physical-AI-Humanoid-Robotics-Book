@@ -1,93 +1,164 @@
-import React, { useState } from 'react';
+/**
+ * Main ChatWidget component integrating all chat functionality
+ */
+import React, { useState, useEffect, useCallback } from 'react';
+import ChatButton from './ChatButton';
+import ChatWindow from './ChatWindow';
+import MessageList from './MessageList';
+import MessageInput from './MessageInput';
+import { ChatMessage, ChatWidgetProps } from './types';
+import { sendMessage, ChatApiError } from '../../services/chatApi';
 import styles from './styles.module.css';
 
-export default function ChatWidget(): JSX.Element {
-  const [isOpen, setIsOpen] = useState(false);
+// Generate unique session ID
+function generateSessionId(): string {
+  return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
 
-  const toggleChat = () => {
-    setIsOpen(!isOpen);
-  };
+// Storage keys
+const STORAGE_KEYS = {
+  MESSAGES: 'chatWidget_messages',
+  SESSION_ID: 'chatWidget_sessionId',
+};
+
+export default function ChatWidget(_props: ChatWidgetProps): JSX.Element {
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [sessionId, setSessionId] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
+
+  // Initialize session and restore messages from storage
+  useEffect(() => {
+    // Get or create session ID
+    let storedSessionId = sessionStorage.getItem(STORAGE_KEYS.SESSION_ID);
+    if (!storedSessionId) {
+      storedSessionId = generateSessionId();
+      sessionStorage.setItem(STORAGE_KEYS.SESSION_ID, storedSessionId);
+    }
+    setSessionId(storedSessionId);
+
+    // Restore messages from storage
+    const storedMessages = sessionStorage.getItem(STORAGE_KEYS.MESSAGES);
+    if (storedMessages) {
+      try {
+        const parsed = JSON.parse(storedMessages);
+        setMessages(parsed);
+      } catch {
+        // Invalid stored data, ignore
+      }
+    }
+  }, []);
+
+  // Persist messages to storage whenever they change
+  useEffect(() => {
+    if (messages.length > 0) {
+      sessionStorage.setItem(STORAGE_KEYS.MESSAGES, JSON.stringify(messages));
+    }
+  }, [messages]);
+
+  const handleToggle = useCallback(() => {
+    setIsOpen((prev) => !prev);
+    // Clear error when closing
+    if (isOpen) {
+      setError(null);
+    }
+  }, [isOpen]);
+
+  const handleSendMessage = useCallback(
+    async (messageText: string) => {
+      // Clear any previous error
+      setError(null);
+
+      // Create user message
+      const userMessage: ChatMessage = {
+        id: `msg_${Date.now()}_user`,
+        text: messageText,
+        sender: 'user',
+        timestamp: Date.now(),
+      };
+
+      // Add user message to UI immediately
+      setMessages((prev) => [...prev, userMessage]);
+      setIsLoading(true);
+
+      try {
+        // Build context from recent messages (last 5 exchanges = 10 messages)
+        const recentMessages = messages.slice(-10);
+        const contextMessages = recentMessages.map((msg) => ({
+          role: msg.sender === 'user' ? 'user' : 'assistant',
+          content: msg.text,
+        }));
+
+        // Call API
+        const response = await sendMessage(messageText, sessionId, contextMessages);
+
+        // Create AI message with citations
+        const aiMessage: ChatMessage = {
+          id: `msg_${Date.now()}_ai`,
+          text: response.reply,
+          sender: 'ai',
+          timestamp: Date.now(),
+          citations: response.citations,
+        };
+
+        // Add AI response to UI
+        setMessages((prev) => [...prev, aiMessage]);
+      } catch (err) {
+        let errorMessage = 'Failed to get response. Please try again.';
+
+        if (err instanceof ChatApiError) {
+          if (err.statusCode === 503) {
+            errorMessage = 'The chat service is currently unavailable. Please try again later.';
+          } else if (err.statusCode === 400) {
+            errorMessage = 'Invalid request. Please check your message and try again.';
+          } else {
+            errorMessage = err.message;
+          }
+        }
+
+        setError(errorMessage);
+
+        // Add error message to chat
+        const errorMsg: ChatMessage = {
+          id: `msg_${Date.now()}_error`,
+          text: `⚠️ ${errorMessage}`,
+          sender: 'ai',
+          timestamp: Date.now(),
+        };
+
+        setMessages((prev) => [...prev, errorMsg]);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [messages, sessionId]
+  );
 
   return (
     <>
-      {/* Chat Window */}
+      {!isOpen && <ChatButton onClick={handleToggle} isOpen={isOpen} />}
+
       {isOpen && (
-        <div className={styles.chatWindow}>
-          <div className={styles.chatHeader}>
-            <div className={styles.headerContent}>
-              <span className={styles.botIcon}>🤖</span>
-              <div>
-                <h3 className={styles.chatTitle}>Physical AI Assistant</h3>
-                <p className={styles.chatStatus}>Online</p>
+        <div className={styles.chatWidgetContainer}>
+          <ChatWindow onClose={handleToggle}>
+            {error && (
+              <div className={styles.errorBanner}>
+                <span>⚠️ {error}</span>
+                <button
+                  onClick={() => setError(null)}
+                  className={styles.errorDismiss}
+                  aria-label="Dismiss error"
+                >
+                  ✕
+                </button>
               </div>
-            </div>
-            <button
-              className={styles.closeButton}
-              onClick={toggleChat}
-              aria-label="Close chat"
-            >
-              ✕
-            </button>
-          </div>
-
-          <div className={styles.chatBody}>
-            <div className={styles.welcomeMessage}>
-              <div className={styles.messageIcon}>🤖</div>
-              <div className={styles.messageContent}>
-                <p className={styles.welcomeText}>
-                  Ask the Physical AI Assistant...
-                </p>
-                <p className={styles.welcomeSubtext}>
-                  I can help you with robotics, ROS 2, digital twins, and AI integration!
-                </p>
-              </div>
-            </div>
-
-            <div className={styles.quickActions}>
-              <button className={styles.quickActionButton}>
-                💡 Getting Started
-              </button>
-              <button className={styles.quickActionButton}>
-                📚 Module Overview
-              </button>
-              <button className={styles.quickActionButton}>
-                🔧 Troubleshooting
-              </button>
-            </div>
-          </div>
-
-          <div className={styles.chatFooter}>
-            <input
-              type="text"
-              placeholder="Type your question here..."
-              className={styles.chatInput}
-            />
-            <button className={styles.sendButton} aria-label="Send message">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-              </svg>
-            </button>
-          </div>
+            )}
+            <MessageList messages={messages} isLoading={isLoading} />
+            <MessageInput onSend={handleSendMessage} disabled={isLoading} />
+          </ChatWindow>
         </div>
       )}
-
-      {/* Floating Action Button */}
-      <button
-        className={`${styles.floatingButton} ${isOpen ? styles.open : ''}`}
-        onClick={toggleChat}
-        aria-label="Toggle chat"
-      >
-        {isOpen ? (
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        ) : (
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-          </svg>
-        )}
-      </button>
     </>
   );
 }

@@ -1,24 +1,3 @@
-<!--
-Sync Impact Report:
-Version change: 1.0.0 → 2.0.0 (MAJOR: Project-specific RAG chatbot principles)
-Modified principles:
-  - Clarity and Simplicity → Grounded Reasoning
-  - Test-Driven Development (TDD) → Cohere-Native Alignment
-  - Incremental Development → Context Prioritization
-  - Code Quality → Transparency
-  - Security by Design → Academic Clarity
-Added sections:
-  - System Standards
-  - Interaction Rules
-  - Technical Constraints
-  - Success Criteria
-Removed sections: Development Workflow
-Templates requiring updates:
-  - .specify/templates/plan-template.md: requires sync
-  - .specify/templates/spec-template.md: requires sync
-  - .specify/templates/tasks-template.md: requires sync
-Follow-up TODOs: Update dependent templates to reference RAG-specific principles
--->
 # AI-Powered RAG Chatbot Constitution
 
 **Project**: Physical AI and Humanoid Robotics textbook with user-selected context querying

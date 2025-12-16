@@ -1,0 +1,584 @@
+openapi: 3.1.0
+info:
+  title: RAG Chatbot API
+  description: |
+    AI-native RAG chatbot for Physical AI and Humanoid Robotics textbook.
+
+    **Core Features**:
+    - Grounded retrieval with zero hallucinations
+    - User-selected-text mode (context override)
+    - Cohere-powered embeddings, reranking, and generation
+    - Citation support for academic integrity
+
+    **Constitution Alignment**:
+    - Principle I: Grounded Reasoning (all answers traceable to book content)
+    - Principle III: Context Prioritization (selected text overrides global search)
+    - Principle IV: Transparency (explicit out-of-scope messages)
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local development server
+  - url: https://api.example.com/api/v1
+    description: Production server
+
+tags:
+  - name: health
+    description: System health and monitoring
+  - name: ingestion
+    description: Book content ingestion and embedding
+  - name: query
+    description: RAG query endpoints (standard and selected-text modes)
+
+paths:
+  /health:
+    get:
+      tags:
+        - health
+      summary: Health check
+      description: |
+        Returns system health status including Qdrant and Neon connection status.
+        Used for monitoring and readiness checks.
+      operationId: getHealth
+      responses:
+        '200':
+          description: System is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              examples:
+                healthy:
+                  value:
+                    status: healthy
+                    qdrant_connected: true
+                    neon_connected: true
+                    total_chunks_indexed: 1523
+                    total_chapters: 12
+                    uptime_seconds: 3600
+        '503':
+          description: Service degraded or unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              examples:
+                degraded:
+                  value:
+                    status: degraded
+                    qdrant_connected: false
+                    neon_connected: true
+                    total_chunks_indexed: 0
+                    total_chapters: 12
+                    uptime_seconds: 120
+                    error: Qdrant connection timeout
+
+  /embed:
+    post:
+      tags:
+        - ingestion
+      summary: Ingest book content
+      description: |
+        Ingests structured book content (chapters, sections, paragraphs), chunks it into
+        max 700-token segments with overlap, generates embeddings via Cohere embed-english-v3.0,
+        and stores vectors in Qdrant + metadata in Neon Postgres.
+
+        **Process**:
+        1. Validate request schema
+        2. Chunk content (sliding window, 100-token overlap)
+        3. Generate embeddings (batch processing)
+        4. Store in Qdrant (batch upsert)
+        5. Store metadata in Neon (transactional)
+
+        **Performance**: ~100 chunks/minute (depends on Cohere API throughput)
+      operationId: embedContent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmbedRequest'
+            examples:
+              single_chapter:
+                value:
+                  chapters:
+                    - chapter_id: ch01
+                      chapter_title: Introduction to Physical AI
+                      sections:
+                        - section_name: 1.1 What is Physical AI?
+                          content: Physical AI refers to artificial intelligence systems that interact with the physical world through sensors and actuators. Unlike purely digital AI, physical AI must reason about embodied environments, handle uncertainty from noisy sensors, and execute actions with real-world consequences.
+                        - section_name: 1.2 History of Robotics
+                          content: The field of robotics emerged in the 1960s with industrial manipulators like the Unimate. Early robots were programmed with fixed sequences, lacking adaptability. Modern robotics leverages AI for perception, planning, and control.
+      responses:
+        '200':
+          description: Content successfully ingested
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmbedResponse'
+              examples:
+                success:
+                  value:
+                    status: success
+                    total_chunks_created: 25
+                    total_chapters_processed: 1
+                    ingestion_time_seconds: 12.3
+        '400':
+          description: Invalid request (schema validation failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missing_chapter_id:
+                  value:
+                    error_code: INVALID_REQUEST
+                    message: Validation error
+                    details:
+                      field: chapters[0].chapter_id
+                      error: Field required
+                    timestamp: '2025-12-12T10:30:00Z'
+        '500':
+          description: Internal server error (Qdrant or Neon failure)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                qdrant_failure:
+                  value:
+                    error_code: QDRANT_UNAVAILABLE
+                    message: Failed to store embeddings in Qdrant
+                    details:
+                      error: Connection timeout
+                    timestamp: '2025-12-12T10:30:00Z'
+
+  /query:
+    post:
+      tags:
+        - query
+      summary: Standard RAG query
+      description: |
+        Standard RAG retrieval mode:
+        1. Embed query via Cohere embed-english-v3.0
+        2. Vector search in Qdrant (top_k=4, cosine similarity)
+        3. Rerank via Cohere Rerank v3 (top_n=3)
+        4. Fetch metadata from Neon (chapter_id, section_name)
+        5. Generate answer via Cohere Command-R-Plus with grounded context
+        6. Return answer with citations
+
+        **Transparency**: If no relevant chunks found (similarity < 0.7), returns:
+        "This topic isn't mentioned in the book sections I have access to."
+
+        **Performance Target**: <500ms at p95 (retrieval + generation)
+      operationId: queryStandard
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueryRequest'
+            examples:
+              valid_query:
+                value:
+                  query_text: What is transfer learning in neural networks?
+                  max_words: 150
+      responses:
+        '200':
+          description: Query successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueryResponse'
+              examples:
+                found:
+                  value:
+                    answer: Transfer learning is a technique where a model trained on one task is adapted to a related task, leveraging knowledge from the source domain to improve performance on the target domain with limited data.
+                    citations:
+                      - chapter_id: ch05
+                        section_name: 5.3 Transfer Learning
+                        chunk_id: 550e8400-e29b-41d4-a716-446655440000
+                        similarity_score: 0.92
+                      - chapter_id: ch05
+                        section_name: 5.3 Transfer Learning
+                        chunk_id: 660f9500-f39c-52e5-b827-557766551111
+                        similarity_score: 0.88
+                    chunks_used:
+                      - 550e8400-e29b-41d4-a716-446655440000
+                      - 660f9500-f39c-52e5-b827-557766551111
+                    confidence_score: 0.89
+                    no_search_performed: false
+                out_of_scope:
+                  value:
+                    answer: This topic isn't mentioned in the book sections I have access to.
+                    citations: []
+                    chunks_used: []
+                    confidence_score: 0.0
+                    no_search_performed: false
+        '400':
+          description: Invalid request (empty query, exceeds token limit)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                query_too_long:
+                  value:
+                    error_code: QUERY_TOO_LONG
+                    message: Query exceeds 500 tokens
+                    timestamp: '2025-12-12T10:30:00Z'
+        '503':
+          description: Service unavailable (Qdrant or Cohere API down)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                qdrant_down:
+                  value:
+                    error_code: QDRANT_UNAVAILABLE
+                    message: Vector search temporarily unavailable. Please try again.
+                    timestamp: '2025-12-12T10:30:00Z'
+
+  /selected-query:
+    post:
+      tags:
+        - query
+      summary: Selected-text query (context override)
+      description: |
+        Context override mode for user-selected text:
+        1. Validate selected_text (10-2000 tokens)
+        2. **Skip vector search entirely** (no Qdrant query)
+        3. Generate answer via Cohere Command-R-Plus using ONLY selected_text as context
+        4. Return answer with source="user_selection"
+
+        **Constitution Alignment**: Principle III (Context Prioritization) — user-selected
+        text ALWAYS overrides global search results.
+
+        **Performance Target**: <300ms (no vector search latency)
+      operationId: querySelected
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SelectedQueryRequest'
+            examples:
+              valid_selected_query:
+                value:
+                  query_text: Explain this concept in simple terms
+                  selected_text: Gradient descent is an optimization algorithm that iteratively adjusts parameters to minimize a loss function. At each step, it computes the gradient (derivative) of the loss with respect to parameters and updates them in the opposite direction of the gradient.
+                  max_words: 100
+      responses:
+        '200':
+          description: Query successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueryResponse'
+              examples:
+                success:
+                  value:
+                    answer: Gradient descent works by repeatedly adjusting model parameters to reduce errors. It calculates how much each parameter contributes to the error (the gradient) and updates parameters in the direction that reduces error the most.
+                    citations: []
+                    chunks_used: []
+                    confidence_score: 0.95
+                    no_search_performed: true
+                    source: user_selection
+                    selected_text_length: 42
+                insufficient_context:
+                  value:
+                    answer: The selected passage doesn't contain enough information to answer this question.
+                    citations: []
+                    chunks_used: []
+                    confidence_score: 0.2
+                    no_search_performed: true
+                    source: user_selection
+                    selected_text_length: 8
+        '400':
+          description: Invalid request (selected_text too short/long)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                text_too_short:
+                  value:
+                    error_code: SELECTED_TEXT_TOO_SHORT
+                    message: Selected text too short to provide meaningful context (min 10 tokens)
+                    timestamp: '2025-12-12T10:30:00Z'
+        '429':
+          description: Rate limit exceeded (Cohere API throttling)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                rate_limited:
+                  value:
+                    error_code: RATE_LIMIT_EXCEEDED
+                    message: Too many requests. Please try again in 60 seconds.
+                    timestamp: '2025-12-12T10:30:00Z'
+
+components:
+  schemas:
+    # Request models
+    Section:
+      type: object
+      required:
+        - section_name
+        - content
+      properties:
+        section_name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: 1.1 What is Physical AI?
+        content:
+          type: string
+          minLength: 1
+          example: Physical AI refers to artificial intelligence systems that interact with the physical world...
+
+    Chapter:
+      type: object
+      required:
+        - chapter_id
+        - chapter_title
+        - sections
+      properties:
+        chapter_id:
+          type: string
+          pattern: ^ch\d{2}$
+          example: ch01
+        chapter_title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: Introduction to Physical AI
+        sections:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/Section'
+
+    EmbedRequest:
+      type: object
+      required:
+        - chapters
+      properties:
+        chapters:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/Chapter'
+
+    QueryRequest:
+      type: object
+      required:
+        - query_text
+      properties:
+        query_text:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          example: What is transfer learning in neural networks?
+        max_words:
+          type: integer
+          minimum: 50
+          maximum: 500
+          default: 200
+          example: 150
+
+    SelectedQueryRequest:
+      type: object
+      required:
+        - query_text
+        - selected_text
+      properties:
+        query_text:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          example: Explain this concept in simple terms
+        selected_text:
+          type: string
+          minLength: 40
+          maxLength: 8000
+          example: Gradient descent is an optimization algorithm that iteratively adjusts parameters to minimize a loss function.
+        max_words:
+          type: integer
+          minimum: 50
+          maximum: 500
+          default: 200
+
+    # Response models
+    EmbedResponse:
+      type: object
+      required:
+        - status
+        - total_chunks_created
+        - total_chapters_processed
+        - ingestion_time_seconds
+      properties:
+        status:
+          type: string
+          enum: [success]
+          example: success
+        total_chunks_created:
+          type: integer
+          minimum: 0
+          example: 25
+        total_chapters_processed:
+          type: integer
+          minimum: 1
+          example: 1
+        ingestion_time_seconds:
+          type: number
+          format: float
+          minimum: 0
+          example: 12.3
+
+    ChunkReference:
+      type: object
+      required:
+        - chapter_id
+        - section_name
+        - chunk_id
+        - similarity_score
+      properties:
+        chapter_id:
+          type: string
+          example: ch05
+        section_name:
+          type: string
+          example: 5.3 Transfer Learning
+        chunk_id:
+          type: string
+          format: uuid
+          example: 550e8400-e29b-41d4-a716-446655440000
+        similarity_score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          example: 0.92
+
+    QueryResponse:
+      type: object
+      required:
+        - answer
+        - citations
+        - chunks_used
+        - confidence_score
+        - no_search_performed
+      properties:
+        answer:
+          type: string
+          example: Transfer learning is a technique where a model trained on one task is adapted to a related task...
+        citations:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChunkReference'
+        chunks_used:
+          type: array
+          items:
+            type: string
+            format: uuid
+          example:
+            - 550e8400-e29b-41d4-a716-446655440000
+            - 660f9500-f39c-52e5-b827-557766551111
+        confidence_score:
+          type: number
+          format: float
+          minimum: 0.0
+          maximum: 1.0
+          example: 0.89
+        no_search_performed:
+          type: boolean
+          example: false
+        source:
+          type: string
+          nullable: true
+          enum: [user_selection, null]
+          example: user_selection
+        selected_text_length:
+          type: integer
+          nullable: true
+          example: 42
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - qdrant_connected
+        - neon_connected
+        - total_chunks_indexed
+        - total_chapters
+        - uptime_seconds
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+          example: healthy
+        qdrant_connected:
+          type: boolean
+          example: true
+        neon_connected:
+          type: boolean
+          example: true
+        total_chunks_indexed:
+          type: integer
+          minimum: 0
+          example: 1523
+        total_chapters:
+          type: integer
+          minimum: 0
+          example: 12
+        uptime_seconds:
+          type: number
+          format: float
+          minimum: 0
+          example: 3600.5
+        error:
+          type: string
+          nullable: true
+          example: Qdrant connection timeout
+
+    ErrorResponse:
+      type: object
+      required:
+        - error_code
+        - message
+        - timestamp
+      properties:
+        error_code:
+          type: string
+          example: QDRANT_UNAVAILABLE
+        message:
+          type: string
+          example: Vector search temporarily unavailable. Please try again.
+        details:
+          type: object
+          nullable: true
+          additionalProperties: true
+        timestamp:
+          type: string
+          format: date-time
+          example: '2025-12-12T10:30:00Z'
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        API key for POST /embed endpoint (admin access).
+        Not required for query endpoints (public access).
+
+security: []  # No global security (endpoint-specific)
