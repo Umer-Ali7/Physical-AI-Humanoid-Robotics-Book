@@ -3,8 +3,8 @@
  */
 import { ChatRequest, ChatResponse } from '../components/ChatWidget/types';
 
-// Safe way to access environment variables in Docusaurus
-const API_BASE_URL = (typeof process !== 'undefined' && process.env?.REACT_APP_API_URL) || 'http://localhost:8000';
+// Backend API URL (will be updated after deploying Python backend)
+const API_BASE_URL = 'http://localhost:8000';
 
 export class ChatApiError extends Error {
   constructor(
@@ -32,7 +32,7 @@ export async function sendMessage(
       context_messages: contextMessages,
     };
 
-    const response = await fetch(`${API_BASE_URL}/chat`, {
+    const response = await fetch(`${API_BASE_URL}/api/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -52,8 +52,17 @@ export async function sendMessage(
       );
     }
 
-    const data: ChatResponse = await response.json();
-    return data;
+    const data = await response.json();
+
+    // Map backend response format to frontend format
+    // Backend returns: { answer: string, processing_time: number }
+    // Frontend expects: { reply: string, citations?: Citation[] }
+    const mappedResponse: ChatResponse = {
+      reply: data.answer || data.reply || '', // Support both formats
+      citations: data.citations || [], // Citations may not be provided by backend
+    };
+
+    return mappedResponse;
   } catch (error) {
     if (error instanceof ChatApiError) {
       throw error;
