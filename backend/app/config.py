@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     # Admin API key (optional - for ingestion endpoint)
     admin_api_key: str = Field(default=None, description="Admin API key for ingestion")
 
+    # CORS origins (optional - comma-separated list of allowed origins)
+    cors_origins: Optional[str] = Field(default=None, description="CORS allowed origins (comma-separated)")
+
     @property
     def db_url(self) -> str:
         """Get database URL from either neon_db_url or database_url."""
