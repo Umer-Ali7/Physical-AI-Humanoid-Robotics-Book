@@ -65,9 +65,13 @@ class RetrievalService:
                 score_threshold=score_threshold,
             )
 
-            # Format results
+            # Format results - query_points returns QueryResponse with points attribute
             chunks = []
-            for result in search_results:
+            # Handle both query_points (returns QueryResponse) and search (returns list)
+            points = search_results.points if hasattr(search_results, 'points') else search_results
+
+            for result in points:
+                # Each result is a ScoredPoint
                 chunks.append({
                     "text": result.payload.get("text", ""),
                     "chapter_id": result.payload.get("chapter_id", ""),
