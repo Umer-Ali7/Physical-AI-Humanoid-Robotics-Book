@@ -3,8 +3,8 @@
  */
 import { ChatRequest, ChatResponse } from '../components/ChatWidget/types';
 
-// Backend API URL (will be updated after deploying Python backend)
-const API_BASE_URL = 'http://localhost:8000';
+// Backend API URL - Production RAG backend on Render
+const API_BASE_URL = 'https://rag-chatbor-physical-ai-humanoid.onrender.com/api/v1';
 
 export class ChatApiError extends Error {
   constructor(
