@@ -292,6 +292,23 @@ app.get('/api/auth/session', async (req, res) => {
   }
 });
 
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    name: 'Authentication API',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: {
+      health: 'GET /health',
+      signup: 'POST /api/auth/signup-custom',
+      signin: 'POST /api/auth/signin',
+      signout: 'POST /api/auth/signout',
+      session: 'GET /api/auth/session'
+    },
+    documentation: 'https://github.com/your-repo'
+  });
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Auth server is running' });
