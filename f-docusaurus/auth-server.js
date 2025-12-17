@@ -20,7 +20,10 @@ const pool = new Pool({
 // Middleware (must be before routes)
 const allowedOrigins = process.env.FRONTEND_URL
   ? process.env.FRONTEND_URL.split(',')
-  : ['http://localhost:3000'];
+  : [
+      'http://localhost:3000',
+      'https://physical-ai-humanoid-robotics-book-ebon.vercel.app'
+    ];
 
 app.use(cors({
   origin: allowedOrigins,
