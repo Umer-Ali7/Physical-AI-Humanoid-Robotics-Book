@@ -32,7 +32,7 @@ export async function sendMessage(
       context_messages: contextMessages,
     };
 
-    const response = await fetch(`${API_BASE_URL}/api/chat`, {
+    const response = await fetch(`${API_BASE_URL}/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
