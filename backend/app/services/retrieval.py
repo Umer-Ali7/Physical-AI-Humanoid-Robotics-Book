@@ -55,10 +55,12 @@ class RetrievalService:
             # Get Qdrant client
             client = await get_qdrant_client()
 
-            # Search for similar chunks
-            search_results = await client.search(
+            # Search for similar chunks using Qdrant query_points
+            from qdrant_client.models import PointIdsList, Filter, FieldCondition, SearchParams
+
+            search_results = await client.query_points(
                 collection_name=COLLECTION_NAME,
-                query_vector=query_vector,
+                query=query_vector,
                 limit=top_k,
                 score_threshold=score_threshold,
             )
