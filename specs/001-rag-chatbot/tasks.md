@@ -76,31 +76,31 @@ This is a **Web application** with:
 
 **Backend Services**:
 
-- [ ] T023 [P] [US1] Implement `generate_embedding(text: str)` in `backend/src/services/embedding.py` using Gemini text-embedding-004
-- [ ] T024 [P] [US1] Implement `search(query_vector, top_k)` in `backend/src/services/vectordb.py` for Qdrant semantic search
-- [ ] T025 [US1] Implement `generate_response(chunks, query)` in `backend/src/services/generation.py` using Gemini 1.5 Flash with strict grounding prompt
-- [ ] T026 [US1] Implement RAG pipeline orchestration in `backend/src/services/rag_pipeline.py` combining embedding → search → generation
+- [X] T023 [P] [US1] Implement `generate_embedding(text: str)` in `backend/app/services/embedding.py` using Cohere embed-english-v3.0
+- [X] T024 [P] [US1] Implement `search(query_vector, top_k)` in `backend/app/services/retrieval.py` for Qdrant semantic search
+- [X] T025 [US1] Implement `generate_response(chunks, query)` in `backend/app/services/generation.py` using Cohere command-r-plus with strict grounding prompt
+- [X] T026 [US1] Implement RAG pipeline orchestration in `backend/app/services/rag_pipeline.py` combining embedding → search → generation
 
 **Backend API**:
 
-- [ ] T027 [US1] Implement `POST /chat` endpoint in `backend/src/api/chat.py` with request validation, RAG pipeline call, and error handling
-- [ ] T028 [US1] Add `/chat` endpoint to FastAPI router in `backend/src/main.py`
-- [ ] T029 [US1] Add input validation for query length (1-500 chars) in `backend/src/api/chat.py`
-- [ ] T030 [US1] Implement "no results found" handling in `backend/src/api/chat.py` when semantic search returns empty or low-score results
+- [X] T027 [US1] Implement `POST /chat` endpoint in `backend/app/routers/chat.py` with request validation, RAG pipeline call, and error handling
+- [X] T028 [US1] Add `/chat` endpoint to FastAPI router in `backend/app/main.py`
+- [X] T029 [US1] Add input validation for query length (1-2000 chars) in `backend/app/models/requests.py` (QueryRequest model)
+- [X] T030 [US1] Implement "no results found" handling in `backend/app/services/rag_pipeline.py` when semantic search returns empty or low-score results
 
 **Frontend Components**:
 
-- [ ] T031 [P] [US1] Create TypeScript interfaces in `f-docusaurus/src/components/ChatWidget/types.ts`: `ChatMessage`, `ChatWidgetProps`
-- [ ] T032 [P] [US1] Implement ChatButton component in `f-docusaurus/src/components/ChatWidget/ChatButton.tsx` with floating button styling
-- [ ] T033 [P] [US1] Implement ChatWindow component in `f-docusaurus/src/components/ChatWidget/ChatWindow.tsx` with header and close button
-- [ ] T034 [P] [US1] Implement MessageList component in `f-docusaurus/src/components/ChatWidget/MessageList.tsx` for displaying user/AI messages
-- [ ] T035 [P] [US1] Implement MessageInput component in `f-docusaurus/src/components/ChatWidget/MessageInput.tsx` with text input and send button
-- [ ] T036 [US1] Implement API client in `f-docusaurus/src/services/chatApi.ts` with `sendMessage(query: string)` function calling `POST /chat`
-- [ ] T037 [US1] Integrate all components in `f-docusaurus/src/components/ChatWidget/index.tsx` with state management (useState for messages, isOpen, isLoading)
-- [ ] T038 [US1] Add ChatWidget to global Layout by swizzling `f-docusaurus/src/theme/Layout/index.tsx`
-- [ ] T039 [US1] Style ChatWidget components in `f-docusaurus/src/components/ChatWidget/styles.module.css` with responsive design
-- [ ] T040 [US1] Implement loading indicator in MessageList component while waiting for AI response
-- [ ] T041 [US1] Add error message display in ChatWindow when API call fails (503, 500, 400 errors)
+- [X] T031 [P] [US1] Create TypeScript interfaces in `f-docusaurus/src/components/ChatWidget/types.ts`: `ChatMessage`, `ChatWidgetProps`
+- [X] T032 [P] [US1] Implement ChatButton component in `f-docusaurus/src/components/ChatWidget/ChatButton.tsx` with floating button styling
+- [X] T033 [P] [US1] Implement ChatWindow component in `f-docusaurus/src/components/ChatWidget/ChatWindow.tsx` with header and close button
+- [X] T034 [P] [US1] Implement MessageList component in `f-docusaurus/src/components/ChatWidget/MessageList.tsx` for displaying user/AI messages
+- [X] T035 [P] [US1] Implement MessageInput component in `f-docusaurus/src/components/ChatWidget/MessageInput.tsx` with text input and send button
+- [X] T036 [US1] Implement API client in `f-docusaurus/src/services/chatApi.ts` with `sendMessage(query: string)` function calling `POST /chat`
+- [X] T037 [US1] Integrate all components in `f-docusaurus/src/components/ChatWidget/index.tsx` with state management (useState for messages, isOpen, isLoading)
+- [X] T038 [US1] Add ChatWidget to global Layout by swizzling `f-docusaurus/src/theme/Layout/index.tsx`
+- [X] T039 [US1] Style ChatWidget components in `f-docusaurus/src/components/ChatWidget/styles.module.css` with responsive design
+- [X] T040 [US1] Implement loading indicator in MessageList component while waiting for AI response
+- [X] T041 [US1] Add error message display in ChatWindow when API call fails (503, 500, 400 errors)
 
 **Session Storage**:
 
@@ -191,21 +191,21 @@ This is a **Web application** with:
 
 **Backend - Ingestion Services**:
 
-- [ ] T069 [P] [US4] Implement markdown file scanner in `backend/src/services/ingestion.py` with `scan_markdown_files(docs_path)` function
-- [ ] T070 [P] [US4] Implement semantic chunking logic in `backend/src/services/ingestion.py` with `chunk_markdown(content, file_path)` using 800-1000 token chunks, 200 token overlap
-- [ ] T071 [US4] Implement batch embedding generation in `backend/src/services/embedding.py` with `generate_embeddings_batch(chunks)` processing up to 100 chunks at a time
-- [ ] T072 [US4] Implement Qdrant collection initialization in `backend/src/services/vectordb.py` with `create_collection()` (768 dimensions, cosine distance)
-- [ ] T073 [US4] Implement chunk upsert logic in `backend/src/services/vectordb.py` with `upsert_chunks(chunks)` using file_path + chunk_index as unique ID
-- [ ] T074 [US4] Implement ingestion orchestration in `backend/src/services/ingestion.py` combining scan → chunk → embed → upsert with progress logging
+- [X] T069 [P] [US4] Implement markdown file scanner in `backend/app/services/ingestion.py` with file scanning from docs directory
+- [X] T070 [P] [US4] Implement semantic chunking logic in `backend/app/services/chunking.py` with `chunk_markdown()` using 1000 char chunks, 200 char overlap
+- [X] T071 [US4] Implement batch embedding generation in `backend/app/services/embedding.py` with `generate_embeddings_batch()` using Cohere
+- [X] T072 [US4] Qdrant collection initialization already implemented in `backend/app/db/qdrant_client.py` (1024 dimensions for Cohere, cosine distance)
+- [X] T073 [US4] Implement chunk upsert logic in `backend/app/services/ingestion.py` using UUID as unique ID
+- [X] T074 [US4] Implement ingestion orchestration in `backend/app/services/ingestion.py` combining scan → chunk → embed → upsert with progress logging
 
 **Backend - Ingestion API**:
 
-- [ ] T075 [US4] Implement `POST /ingest` endpoint in `backend/src/api/ingest.py` with admin API key authentication (X-Admin-API-Key header)
-- [ ] T076 [US4] Add `/ingest` endpoint to FastAPI router in `backend/src/main.py`
-- [ ] T077 [US4] Add request validation for docs_path in `backend/src/api/ingest.py`
-- [ ] T078 [US4] Implement progress logging during ingestion (file count, chunk count, duration)
-- [ ] T079 [US4] Implement error handling for failed files in ingestion with detailed error messages
-- [ ] T080 [US4] Add force_reindex option to delete existing collection before ingestion
+- [X] T075 [US4] Implement `POST /api/v1/ingest` endpoint in `backend/app/routers/ingest.py` with admin API key authentication (X-Admin-API-Key header)
+- [X] T076 [US4] Add `/ingest` endpoint to FastAPI router in `backend/app/main.py`
+- [X] T077 [US4] Add request validation for docs_path in `backend/app/routers/ingest.py` (IngestRequest model)
+- [X] T078 [US4] Implement progress logging during ingestion (file count, chunk count, duration)
+- [X] T079 [US4] Implement error handling for failed files in ingestion with detailed error messages
+- [X] T080 [US4] Add force_reindex option to delete existing collection before ingestion
 
 **Checkpoint**: All user stories complete - maintainers can update documentation and users get fresh answers
 

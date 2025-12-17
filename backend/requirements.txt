@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+psycopg
+psycopg-pool
+qdrant-client
+python-dotenv
+cohere
+httpx
+beautifulsoup4
+lxml

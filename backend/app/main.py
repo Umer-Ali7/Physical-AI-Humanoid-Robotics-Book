@@ -138,6 +138,13 @@ async def health_check():
     }
 
 
+# Import routers
+from app.routers import chat, ingest
+
+# Register routers
+app.include_router(chat.router)
+app.include_router(ingest.router)
+
 # Root endpoint
 @app.get("/", tags=["root"])
 async def root():
@@ -147,6 +154,10 @@ async def root():
         "version": "1.0.0",
         "docs": "/docs",
         "health": "/api/v1/health",
+        "endpoints": {
+            "chat": "/api/v1/chat",
+            "ingest": "/api/v1/ingest (admin)",
+        },
     }
 
 

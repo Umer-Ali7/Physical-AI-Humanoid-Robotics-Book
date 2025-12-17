@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     host: str = Field(default="0.0.0.0", description="Server host")
     port: int = Field(default=8000, ge=1, le=65535, description="Server port")
 
+    # Admin API key (optional - for ingestion endpoint)
+    admin_api_key: str = Field(default=None, description="Admin API key for ingestion")
+
     @field_validator("log_level")
     @classmethod
     def validate_log_level(cls, v: str) -> str:
