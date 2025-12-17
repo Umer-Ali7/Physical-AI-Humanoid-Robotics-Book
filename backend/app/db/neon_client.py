@@ -32,7 +32,7 @@ async def get_neon_pool() -> AsyncConnectionPool:
     if _pool is None:
         try:
             _pool = AsyncConnectionPool(
-                conninfo=settings.neon_db_url,
+                conninfo=settings.db_url,  # Use db_url property that supports both neon_db_url and database_url
                 min_size=5,
                 max_size=20,
                 timeout=30,
