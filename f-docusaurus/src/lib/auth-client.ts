@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:5000';
+const API_BASE_URL = process.env.REACT_APP_AUTH_URL || 'https://physical-ai-humanoid-robotics-book-h9ap.onrender.com';
 
 export interface User {
   id: string;
