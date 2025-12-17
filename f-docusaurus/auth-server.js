@@ -18,12 +18,19 @@ const pool = new Pool({
 });
 
 // Middleware (must be before routes)
-const allowedOrigins = process.env.FRONTEND_URL
-  ? process.env.FRONTEND_URL.split(',')
-  : [
-      'http://localhost:3000',
-      'https://physical-ai-humanoid-robotics-book-ebon.vercel.app'
-    ];
+// Allow specific origins or use environment variable
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://physical-ai-humanoid-robotics-book-ebon.vercel.app'
+];
+
+// Add FRONTEND_URL from environment if provided
+if (process.env.FRONTEND_URL) {
+  const envOrigins = process.env.FRONTEND_URL.split(',').map(url => url.trim());
+  allowedOrigins.push(...envOrigins);
+}
+
+console.log('🔒 CORS Allowed Origins:', allowedOrigins);
 
 app.use(cors({
   origin: allowedOrigins,
