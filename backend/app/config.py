@@ -25,13 +25,14 @@ class Settings(BaseSettings):
     # Cohere API
     cohere_api_key: str = Field(..., description="Cohere API key for embeddings and generation")
 
-    # Qdrant Cloud
-    qdrant_url: str = Field(..., description="Qdrant cluster URL")
-    qdrant_api_key: str = Field(..., description="Qdrant API key")
-    qdrant_cluster_id: str = Field(..., description="Qdrant cluster ID")
+    # Qdrant Cloud (optional - can use local or skip for now)
+    qdrant_url: Optional[str] = Field(default="http://localhost:6333", description="Qdrant cluster URL")
+    qdrant_api_key: Optional[str] = Field(default=None, description="Qdrant API key")
+    qdrant_cluster_id: Optional[str] = Field(default="local", description="Qdrant cluster ID")
 
-    # Neon Serverless Postgres
-    neon_db_url: str = Field(..., description="Neon Postgres connection string")
+    # Neon Serverless Postgres (support both NEON_DB_URL and DATABASE_URL)
+    neon_db_url: Optional[str] = Field(default=None, description="Neon Postgres connection string")
+    database_url: Optional[str] = Field(default=None, description="Alternative database URL")
 
     # Application config
     log_level: str = Field(default="INFO", description="Logging level")
@@ -48,6 +49,11 @@ class Settings(BaseSettings):
 
     # Admin API key (optional - for ingestion endpoint)
     admin_api_key: str = Field(default=None, description="Admin API key for ingestion")
+
+    @property
+    def db_url(self) -> str:
+        """Get database URL from either neon_db_url or database_url."""
+        return self.neon_db_url or self.database_url or ""
 
     @field_validator("log_level")
     @classmethod
