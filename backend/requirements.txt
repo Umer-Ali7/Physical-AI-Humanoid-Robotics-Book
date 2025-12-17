@@ -10,4 +10,3 @@ beautifulsoup4==4.14.3
 lxml==6.0.2
 pydantic-settings==2.7.1
 pydantic==2.12.5
-agents-sdk==0.1.12
