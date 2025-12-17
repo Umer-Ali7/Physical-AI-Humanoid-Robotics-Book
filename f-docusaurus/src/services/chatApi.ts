@@ -55,11 +55,16 @@ export async function sendMessage(
     const data = await response.json();
 
     // Map backend response format to frontend format
-    // Backend returns: { answer: string, processing_time: number }
+    // Backend returns: { answer: string, citations: ChunkReference[], confidence_score: float }
     // Frontend expects: { reply: string, citations?: Citation[] }
     const mappedResponse: ChatResponse = {
-      reply: data.answer || data.reply || '', // Support both formats
-      citations: data.citations || [], // Citations may not be provided by backend
+      reply: data.answer || data.reply || '',
+      citations: data.citations ? data.citations.map((cite: any) => ({
+        section: cite.section_name || cite.section || 'Unknown Section',
+        url: `#${cite.chapter_id}` || cite.url || '#',
+        source_number: cite.source_number || 1,
+        relevance_score: cite.similarity_score || cite.relevance_score || 0
+      })) : []
     };
 
     return mappedResponse;
