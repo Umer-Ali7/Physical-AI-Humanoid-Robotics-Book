@@ -64,8 +64,10 @@ class Settings(BaseSettings):
             raise ValueError(f"log_level must be one of {valid_levels}")
         return v.upper()
 
-    def mask_secret(self, value: str) -> str:
+    def mask_secret(self, value: Optional[str]) -> str:
         """Mask secret values for logging (show first 4 chars only)."""
+        if not value:
+            return "not_set"
         if len(value) <= 8:
             return "***"
         return f"{value[:4]}...{value[-4:]}"
@@ -74,10 +76,10 @@ class Settings(BaseSettings):
         """Get configuration with secrets masked for safe logging."""
         return {
             "cohere_api_key": self.mask_secret(self.cohere_api_key),
-            "qdrant_url": self.qdrant_url,
+            "qdrant_url": self.qdrant_url or "not_set",
             "qdrant_api_key": self.mask_secret(self.qdrant_api_key),
-            "qdrant_cluster_id": self.qdrant_cluster_id,
-            "neon_db_url": self.mask_secret(self.neon_db_url),
+            "qdrant_cluster_id": self.qdrant_cluster_id or "not_set",
+            "database_url": self.mask_secret(self.db_url),
             "log_level": self.log_level,
             "max_concurrent_requests": str(self.max_concurrent_requests),
             "rate_limit_per_minute": str(self.rate_limit_per_minute),
