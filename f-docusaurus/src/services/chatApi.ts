@@ -26,10 +26,10 @@ export async function sendMessage(
   contextMessages?: Array<{ role: string; content: string }>
 ): Promise<ChatResponse> {
   try {
-    const requestBody: ChatRequest = {
-      message: message.trim(),
-      session_id: sessionId,
-      context_messages: contextMessages,
+    // Backend expects query_text and max_words (not message/session_id)
+    const requestBody = {
+      query_text: message.trim(),
+      max_words: 200,
     };
 
     const response = await fetch(`${API_BASE_URL}/chat`, {
