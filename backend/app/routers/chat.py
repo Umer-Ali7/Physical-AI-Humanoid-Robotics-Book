@@ -48,7 +48,7 @@ async def chat_query(request: QueryRequest) -> QueryResponse:
             query_text=request.query_text,
             max_words=request.max_words,
             top_k=3,  # Retrieve top 3 most relevant chunks
-            score_threshold=0.7,  # Minimum similarity score
+            score_threshold=0.3,  # Lowered from 0.7 to allow more results
         )
 
         # Build response
