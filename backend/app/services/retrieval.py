@@ -27,7 +27,7 @@ class RetrievalService:
         self,
         query: str,
         top_k: int = 3,
-        score_threshold: float = 0.7,
+        score_threshold: float = 0.3,  # Lowered from 0.7 to allow more results
     ) -> List[Dict[str, Any]]:
         """
         Perform semantic search for relevant chunks.
