@@ -21,7 +21,7 @@ class GenerationService:
     def __init__(self):
         """Initialize Cohere client."""
         self.client = cohere.Client(api_key=settings.cohere_api_key)
-        self.model = "command-r-plus"  # Cohere's best model for RAG
+        self.model = "command-a-03-2025"  # Cohere's latest model with enhanced RAG performance
         logger.info(f"Initialized GenerationService with model: {self.model}")
 
     async def generate_response(
