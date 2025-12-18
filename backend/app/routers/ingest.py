@@ -117,7 +117,7 @@ def verify_admin_key(x_admin_api_key: Optional[str] = Header(None)) -> bool:
 @router.post("/ingest", response_model=IngestResponse)
 async def ingest_documents(
     request: IngestRequest,
-    authorized: bool = Header(default=None, include_in_schema=False, alias="X-Admin-API-Key"),
+    authorized: Optional[str] = Header(default=None, include_in_schema=False, alias="X-Admin-API-Key"),
 ) -> IngestResponse:
     """
     Ingest documentation files into the vector database.
@@ -225,7 +225,7 @@ class SitemapIngestResponse(BaseModel):
 @router.post("/ingest/sitemap", response_model=SitemapIngestResponse)
 async def ingest_from_sitemap(
     request: SitemapIngestRequest,
-    authorized: bool = Header(default=None, include_in_schema=False, alias="X-Admin-API-Key"),
+    authorized: Optional[str] = Header(default=None, include_in_schema=False, alias="X-Admin-API-Key"),
 ) -> SitemapIngestResponse:
     """
     Ingest web pages from a sitemap into the vector database.
